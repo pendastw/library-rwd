@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>書籍詳情 — 圖書館館藏查詢</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="index.html" class="logo" title="回首頁">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      圖書館館藏
+    </a>
+  </header>
+
+  <main class="container">
+    <a id="backBtn" href="results.html" class="btn-back">
+      ← 返回搜尋結果
+    </a>
+
+    <div id="detailContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>正在載入書籍資料…</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>德育護理健康學院圖書館 — 館藏資料來源：HyLib 系統</p>
+  </footer>
+
+  <script src="js/detail.js"></script>
+</body>
+</html>

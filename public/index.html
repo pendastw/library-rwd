@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>圖書館館藏查詢 — 德育護理健康學院</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <a href="index.html" class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      圖書館館藏
+    </a>
+  </header>
+
+  <!-- Hero / Search -->
+  <section class="hero">
+    <h1>德育護理健康學院 圖書館</h1>
+    <p>館藏查詢系統 — 適用手機、平板、電腦</p>
+
+    <div class="search-box">
+      <div class="search-row">
+        <select id="searchField" aria-label="搜尋欄位">
+          <option value="FullText">關鍵字</option>
+          <option value="TI">書名</option>
+          <option value="PN">作者</option>
+          <option value="ISBN">ISBN</option>
+          <option value="SU">主題</option>
+          <option value="PU">出版社</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="輸入關鍵字，例如：護理學、解剖學…" aria-label="搜尋關鍵字">
+        <button class="btn-search" onclick="goSearch()">搜尋</button>
+      </div>
+      <p class="search-hint">可依書名、作者、ISBN 或主題進行查詢</p>
+    </div>
+  </section>
+
+  <!-- 跑馬燈：推薦書單 -->
+  <section class="carousel-section">
+    <div class="carousel-header">
+      <div class="carousel-tabs" id="carouselTabs">
+        <button class="ctab active" onclick="switchCarousel(0, this)">悅書訊</button>
+        <button class="ctab" onclick="switchCarousel(1, this)">113學年度借閱排行</button>
+        <button class="ctab" onclick="switchCarousel(2, this)">熱門電影</button>
+        <button class="ctab" onclick="switchCarousel(3, this)">專業影片、其他</button>
+      </div>
+      <div class="carousel-nav">
+        <button class="cnav" id="prevBtn" onclick="slide(-1)">‹</button>
+        <button class="cnav" id="nextBtn" onclick="slide(1)">›</button>
+      </div>
+    </div>
+
+    <div class="carousel-track-wrap">
+      <div class="carousel-track" id="carouselTrack">
+        <div class="carousel-loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>德育護理健康學院圖書館 &copy; 2024 — 館藏資料來源：HyLib 系統</p>
+  </footer>
+
+  <script>
+    // ── 搜尋 ──────────────────────────────────
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') goSearch();
+    });
+
+    function goSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      const field = document.getElementById('searchField').value;
+      if (!q) { document.getElementById('searchInput').focus(); return; }
+      window.location.href = `results.html?q=${encodeURIComponent(q)}&field=${field}`;
+    }
+
+    // ── 跑馬燈 ───────────────────────────────
+    // 各分頁的資料來源設定（對應原網站四個跑馬燈分類）
+    const CAROUSEL_CONFIGS = [
+      { source: 'yueshu'  },   // 悅書訊：從原網站首頁抓取
+      { source: 'ranking' },   // 113學年度借閱排行：圖書借閱排行
+      { source: 'movie'   },   // 熱門電影：視聽資料借閱排行
+      { source: 'media2'  },   // 專業影片、其他：視聽資料第2頁
+    ];
+
+    let currentCarousel = 0;
+    let carouselOffset = 0;
+    let carouselBooks = [];
+    const CARD_WIDTH = 130; // px including gap
+    let autoTimer = null;
+
+    async function loadCarousel(idx) {
+      const track = document.getElementById('carouselTrack');
+      track.innerHTML = '<div class="carousel-loading"><div class="spinner"></div></div>';
+      carouselOffset = 0;
+
+      const cfg = CAROUSEL_CONFIGS[idx];
+      try {
+        const res = await fetch(`/api/booklist?source=${cfg.source}`);
+        const data = await res.json();
+        carouselBooks = (data.books || []).slice(0, 20);
+        renderCarousel();
+        startAutoSlide();
+      } catch (e) {
+        track.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">載入失敗</p>';
+      }
+    }
+
+    function renderCarousel() {
+      const track = document.getElementById('carouselTrack');
+      if (!carouselBooks.length) {
+        track.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">暫無資料</p>';
+        return;
+      }
+      track.innerHTML = carouselBooks.map(book => {
+        const isEbook = book.type === 'ebook';
+        const href = isEbook
+          ? (book.ebookUrl || `https://collections.dyhu.edu.tw/bookDetail.do?id=${book.marcid}`)
+          : `detail.html?marcid=${encodeURIComponent(book.marcid)}`;
+        const target = isEbook ? ' target="_blank" rel="noopener"' : '';
+        return `<a class="cbook" href="${esc(href)}"${target}>
+          <div class="cbook-cover">
+            ${book.cover
+              ? `<img src="${esc(book.cover)}" alt="${esc(book.title)}" loading="lazy" onerror="this.parentElement.innerHTML='📚'">`
+              : '<span>📚</span>'}
+          </div>
+          <div class="cbook-title">${esc(book.title)}</div>
+        </a>`;
+      }).join('');
+      applyOffset();
+    }
+
+    function applyOffset() {
+      document.getElementById('carouselTrack').style.transform = `translateX(-${carouselOffset}px)`;
+    }
+
+    function slide(dir) {
+      const track = document.getElementById('carouselTrack');
+      const maxOffset = Math.max(0, carouselBooks.length * CARD_WIDTH - track.parentElement.offsetWidth);
+      carouselOffset = Math.max(0, Math.min(maxOffset, carouselOffset + dir * CARD_WIDTH * 3));
+      applyOffset();
+    }
+
+    function startAutoSlide() {
+      clearInterval(autoTimer);
+      autoTimer = setInterval(() => {
+        const track = document.getElementById('carouselTrack');
+        const maxOffset = Math.max(0, carouselBooks.length * CARD_WIDTH - track.parentElement.offsetWidth);
+        if (carouselOffset >= maxOffset) carouselOffset = 0;
+        else carouselOffset = Math.min(maxOffset, carouselOffset + CARD_WIDTH * 3);
+        applyOffset();
+      }, 4000);
+    }
+
+    function switchCarousel(idx, btn) {
+      document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCarousel = idx;
+      clearInterval(autoTimer);
+      loadCarousel(idx);
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // 初始載入
+    loadCarousel(0);
+  </script>
+
+</body>
+</html>
