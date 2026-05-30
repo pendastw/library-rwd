@@ -2,20 +2,13 @@ const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
 const BASE_URL = 'https://collections.dyhu.edu.tw';
-const TIMEOUT_MS = 12000;
+const TIMEOUT_MS = 25000;
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.7',
 };
-
-function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timer));
-}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,35 +39,36 @@ module.exports = async (req, res) => {
       nowpage: String(page),
     };
 
-    // Step 1: 取得 session cookie 和 resid
-    const initResp = await fetchWithTimeout(
+    // Step 1: 只取 session cookie，不下載 body
+    const ctrl1 = new AbortController();
+    const t1 = setTimeout(() => ctrl1.abort(), TIMEOUT_MS);
+    const initResp = await fetch(
       `${BASE_URL}/bookSearchList.do?${new URLSearchParams(commonParams)}`,
-      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/webpacIndex.jsp` } }
+      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/webpacIndex.jsp` }, signal: ctrl1.signal }
     );
+    clearTimeout(t1);
 
     const setCookie = initResp.headers.get('set-cookie') || '';
     const jsessionMatch = setCookie.match(/JSESSIONID=([^;,\s]+)/);
     const jsessionid = jsessionMatch ? jsessionMatch[1] : '';
+    // 立刻取消 body 下載，我們只需要 cookie
+    if (initResp.body) initResp.body.destroy ? initResp.body.destroy() : null;
 
-    const initHtml = await initResp.text();
-    const $init = cheerio.load(initHtml);
-
-    let resid = '';
-    $init('[src*="resid="], [href*="resid="]').each((_, el) => {
-      const val = $init(el).attr('src') || $init(el).attr('href') || '';
-      const m = val.match(/resid=(\d+)/);
-      if (m) { resid = m[1]; return false; }
-    });
-
-    // Step 2: 呼叫 booksearch.do 取得真實書單
-    const bookParams = new URLSearchParams({ ...commonParams });
-    if (resid) bookParams.set('resid', resid);
-
-    const cookieHeader = jsessionid ? `JSESSIONID=${jsessionid}` : '';
-    const bookResp = await fetchWithTimeout(
-      `${BASE_URL}/booksearch.do?${bookParams}`,
-      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/bookSearchList.do`, 'Cookie': cookieHeader } }
+    // Step 2: 用 session cookie 取得書單
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), TIMEOUT_MS);
+    const bookResp = await fetch(
+      `${BASE_URL}/booksearch.do?${new URLSearchParams(commonParams)}`,
+      {
+        headers: {
+          ...HEADERS,
+          'Referer': `${BASE_URL}/bookSearchList.do`,
+          'Cookie': jsessionid ? `JSESSIONID=${jsessionid}` : '',
+        },
+        signal: ctrl2.signal,
+      }
     );
+    clearTimeout(t2);
 
     const html = await bookResp.text();
 
@@ -86,7 +80,7 @@ module.exports = async (req, res) => {
     const $ = cheerio.load(html);
 
     let total = 0;
-    const totalMatch = $.text().match(/共查得\s*([\d,]+)\s*件/);
+    const totalMatch = $('body').text().match(/共查得\s*([\d,]+)\s*件/);
     if (totalMatch) total = parseInt(totalMatch[1].replace(/,/g, ''));
 
     const dataTypes = [];
