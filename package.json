@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "德育護理健康學院圖書館 RWD 前端介面",
   "main": "index.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "node server.js"
   },
