@@ -4,11 +4,5 @@
     "api/detail.js":   { "maxDuration": 10, "regions": ["hkg1"] },
     "api/booklist.js": { "maxDuration": 10, "regions": ["hkg1"] },
     "api/ranking.js":  { "maxDuration": 10, "regions": ["hkg1"] }
-  },
-  "rewrites": [
-    { "source": "/api/search",   "destination": "/api/search.js" },
-    { "source": "/api/detail",   "destination": "/api/detail.js" },
-    { "source": "/api/booklist", "destination": "/api/booklist.js" },
-    { "source": "/api/ranking",  "destination": "/api/ranking.js" }
-  ]
+  }
 }
