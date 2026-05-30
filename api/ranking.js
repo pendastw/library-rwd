@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
-const BASE_URL = 'https://collections.dyhu.edu.tw';
+const BASE_URL = 'http://collections.dyhu.edu.tw';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
