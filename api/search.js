@@ -1,80 +1,12 @@
 const cheerio = require('cheerio');
 
 const BASE_URL = 'https://collections.dyhu.edu.tw';
-const TIMEOUT_MS = 9000;
-
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.7',
-};
-
-function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timer));
-}
-
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-
-  const { q, field = 'FullText', page = 1, type = '' } = req.query;
-
-  // 類型對應 execode
-  const TYPE_EXECODE = {
-    book:    'webpac.dataType.book',
-    ebook:   'webpac.dataType.ebook',
-    journal: 'webpac.dataType.journal',
-    media:   'webpac.dataType.media',
-  };
-
-  if (!q || !q.trim()) {
-    return res.status(400).json({ error: '請輸入搜尋關鍵字' });
-  }
-
-  try {
-    const commonParams = {
-      searchtype: 'simplesearch',
-      execodeHidden: 'true',
-      execode: TYPE_EXECODE[type] || '',
-      authoriz: '1',
-      search_field: field,
-      search_input: q,
-      searchsymbol: 'hyLibCore.webpac.search.common_symbol',
-      nowpage: String(page),
-    };
-
-    // Step 1: 先呼叫 bookSearchList.do 取得 session cookie 和 resid
-    const initResp = await fetchWithTimeout(
-      `${BASE_URL}/bookSearchList.do?${new URLSearchParams(commonParams)}`,
-      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/webpacIndex.jsp` } }
-    );
-
-    const setCookie = initResp.headers.get('set-cookie') || '';
-    const jsessionMatch = setCookie.match(/JSESSIONID=([^;,\s]+)/);
-    const jsessionid = jsessionMatch ? jsessionMatch[1] : '';
-
-    const initHtml = await initResp.text();
-    const $init = cheerio.load(initHtml);
-
-    // 從回傳的 HTML 中取出 resid（藏在 frame src 或連結中）
-    let resid = '';
-    $init('[src*="resid="], [href*="resid="]').each((_, el) => {
-      const val = $init(el).attr('src') || $init(el).attr('href') || '';
-      const m = val.match(/resid=(\d+)/);
-      if (m) { resid = m[1]; return false; }
-    });
-
-    // Step 2: 呼叫 booksearch.do 取得真實書單
+const TIMEOUT_MS = 25    
+// 直接呼叫 booksearch.do
     const bookParams = new URLSearchParams({ ...commonParams });
-    if (resid) bookParams.set('resid', resid);
-
-    const cookieHeader = jsessionid ? `JSESSIONID=${jsessionid}` : '';
     const bookResp = await fetchWithTimeout(
       `${BASE_URL}/booksearch.do?${bookParams}`,
-      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/bookSearchList.do`, 'Cookie': cookieHeader } }
+      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/bookSearchList.do` } }
     );
 
     const html = await bookResp.text();
