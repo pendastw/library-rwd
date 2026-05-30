@@ -1,8 +1,8 @@
 {
   "functions": {
-    "api/search.js":   { "maxDuration": 10, "regions": ["hkg1"] },
-    "api/detail.js":   { "maxDuration": 10, "regions": ["hkg1"] },
-    "api/booklist.js": { "maxDuration": 10, "regions": ["hkg1"] },
-    "api/ranking.js":  { "maxDuration": 10, "regions": ["hkg1"] }
+    "api/search.js":   { "maxDuration": 30, "regions": ["hkg1"] },
+    "api/detail.js":   { "maxDuration": 30, "regions": ["hkg1"] },
+    "api/booklist.js": { "maxDuration": 30, "regions": ["hkg1"] },
+    "api/ranking.js":  { "maxDuration": 30, "regions": ["hkg1"] }
   }
 }
