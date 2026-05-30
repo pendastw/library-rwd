@@ -1,3 +1,4 @@
+const fetch = require('node-fetch');
 /**
  * /api/booklist?source=yueshu|ranking|movie|media2
  * 從原網站首頁 TabbedPanels3 解析四個跑馬燈分類（靜態 HTML 內嵌）
