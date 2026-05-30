@@ -1,5 +1,4 @@
 {
-  "outputDirectory": "public",
   "functions": {
     "api/search.js":   { "maxDuration": 10, "regions": ["hkg1"] },
     "api/detail.js":   { "maxDuration": 10, "regions": ["hkg1"] },
