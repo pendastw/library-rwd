@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
-const BASE_URL = 'https://collections.dyhu.edu.tw';
+const BASE_URL = 'http://collections.dyhu.edu.tw';
 const TIMEOUT_MS = 9000;
 
 const HEADERS = {
