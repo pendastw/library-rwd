@@ -1,14 +1,36 @@
 const cheerio = require('cheerio');
 
 const BASE_URL = 'https://collections.dyhu.edu.tw';
-const TIMEOUT_MS = 25000    
-        // 直接呼叫 booksearch.do
-    const bookParams = new URLSearchParams({ ...commonParams });
-    const bookResp = await fetchWithTimeout(
-      `${BASE_URL}/booksearch.do?${bookParams}`,
-      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/bookSearchList.do` } }
+const TIMEOUT_MS = 12000    
+    // Step 1: 取得 session cookie 和 resid
+    const initResp = await fetchWithTimeout(
+      `${BASE_URL}/bookSearchList.do?${new URLSearchParams(commonParams)}`,
+      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/webpacIndex.jsp` } }
     );
 
+    const setCookie = initResp.headers.get('set-cookie') || '';
+    const jsessionMatch = setCookie.match(/JSESSIONID=([^;,\s]+)/);
+    const jsessionid = jsessionMatch ? jsessionMatch[1] : '';
+
+    const initHtml = await initResp.text();
+    const $init = cheerio.load(initHtml);
+
+    let resid = '';
+    $init('[src*="resid="], [href*="resid="]').each((_, el) => {
+      const val = $init(el).attr('src') || $init(el).attr('href') || '';
+      const m = val.match(/resid=(\d+)/);
+      if (m) { resid = m[1]; return false; }
+    });
+
+    // Step 2: 呼叫 booksearch.do 取得真實書單
+    const bookParams = new URLSearchParams({ ...commonParams });
+    if (resid) bookParams.set('resid', resid);
+
+    const cookieHeader = jsessionid ? `JSESSIONID=${jsessionid}` : '';
+    const bookResp = await fetchWithTimeout(
+      `${BASE_URL}/booksearch.do?${bookParams}`,
+      { headers: { ...HEADERS, 'Referer': `${BASE_URL}/bookSearchList.do`, 'Cookie': cookieHeader } }
+    );
     const html = await bookResp.text();
 
     if (req.query.debug === '1') {
