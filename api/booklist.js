@@ -6,6 +6,7 @@
  *   panel 2 → 熱門電影
  *   panel 3 → 專業影片、其他
  */
+const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
 const BASE_URL = 'https://collections.dyhu.edu.tw';
