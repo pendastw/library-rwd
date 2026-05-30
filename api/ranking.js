@@ -12,6 +12,14 @@ const HEADERS = {
 // type: lend (借閱排行) | newest (新書)
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  // 臨時 IP 查詢
+  if (req.query.getip === '1') {
+    const fetch = require('node-fetch');
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    return res.json(d);
+  }
+
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
   const { type = 'lend', collection = 'webpac.dataType.book', pageSize = 20 } = req.query;
