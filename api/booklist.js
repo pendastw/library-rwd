@@ -1,10 +1,10 @@
 /**
- * /api/booklist?source=yueshu|ranking|movie|media2
- * 從原網站首頁 TabbedPanels3 解析四個跑馬燈分類（靜態 HTML 內嵌）
- *   panel 0 → 悅書訊
- *   panel 1 → 113學年度借閱排行
- *   panel 2 → 熱門電影
- *   panel 3 → 專業影片、其他
+ * /api/booklist
+ *   回傳原網站首頁 TabbedPanels3 目前「有書」的所有分類與書單：
+ *   { categories: [ { name, books:[{title, marcid, cover, type}] } ] }
+ *
+ * 分類名稱與內容都是即時從原網站解析，原網站改跑馬燈分類（例如換學年度、
+ * 新增類別）時，本站首頁會自動跟著更新，不需手動改程式。
  */
 const cheerio = require('cheerio');
 
@@ -16,14 +16,12 @@ const HEADERS = {
   'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.7',
 };
 
-const SOURCE_PANEL = { yueshu: 0, ranking: 1, movie: 2, media2: 3 };
-
-// 簡單 in-process cache (60分鐘)
+// 簡單 in-process cache (30 分鐘)
 let _cache = null;
 let _cacheTime = 0;
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 
-async function fetchAllPanels() {
+async function fetchCategories() {
   const now = Date.now();
   if (_cache && now - _cacheTime < CACHE_TTL) return _cache;
 
@@ -34,8 +32,13 @@ async function fetchAllPanels() {
   const html = await resp.text();
   const $ = cheerio.load(html);
 
-  const panels = [];
-  $('#TabbedPanels3 .TabbedPanelsContent').each((panelIdx, panelEl) => {
+  // 分類頁籤名稱（順序對應內容面板）
+  const tabs = $('#TabbedPanels3 .TabbedPanelsTabGroup .TabbedPanelsTab')
+    .map((i, el) => $(el).text().replace(/\s+/g, ' ').trim().replace(/[.．…]+$/, '').trim())
+    .get();
+
+  const categories = [];
+  $('#TabbedPanels3 .TabbedPanelsContentGroup .TabbedPanelsContent').each((panelIdx, panelEl) => {
     const books = [];
     const seen = new Set();
 
@@ -56,34 +59,27 @@ async function fetchAllPanels() {
       if (cover && cover.includes('defaultBook')) cover = '';
       if (cover && !cover.startsWith('http')) cover = `${BASE_URL}/${cover.replace(/^\//, '')}`;
 
-      if (title && marcid) {
-        books.push({ title, marcid, cover, type: 'book' });
-      }
+      if (title && marcid) books.push({ title, marcid, cover, type: 'book' });
     });
 
-    panels.push(books);
+    // 只保留真的有書的分類（例如「所有主題」只是連結，會被跳過）
+    if (books.length) {
+      categories.push({ name: tabs[panelIdx] || `分類${panelIdx + 1}`, books: books.slice(0, 20) });
+    }
   });
 
-  _cache = panels;
+  _cache = categories;
   _cacheTime = now;
-  return panels;
+  return categories;
 }
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
-  const { source = 'yueshu' } = req.query;
-  const panelIdx = SOURCE_PANEL[source];
-
-  if (panelIdx === undefined) {
-    return res.status(400).json({ error: '未知的 source 參數' });
-  }
-
   try {
-    const panels = await fetchAllPanels();
-    const books = (panels[panelIdx] || []).slice(0, 20);
-    res.json({ books, total: books.length });
+    const categories = await fetchCategories();
+    res.json({ categories });
   } catch (err) {
     console.error('Booklist error:', err);
     const isTimeout = err.name === 'AbortError';

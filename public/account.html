@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人書房 — 圖書館館藏查詢</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <a href="index.html" class="logo" title="回首頁">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      圖書館館藏
+    </a>
+    <a class="header-user active" href="account.html" title="個人書房">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span>個人書房</span>
+    </a>
+  </header>
+
+  <main class="container account-container">
+
+    <!-- 載入中 -->
+    <div id="loadingView" class="loading">
+      <div class="spinner"></div>
+      <p>載入中…</p>
+    </div>
+
+    <!-- 登入表單 -->
+    <section id="loginView" style="display:none">
+      <div class="login-card">
+        <h1>讀者登入</h1>
+        <p class="login-hint">登入後可查詢個人借閱狀況、預約與借閱歷史</p>
+        <form id="loginForm" autocomplete="off">
+          <label for="account">證號</label>
+          <input type="text" id="account" name="account" placeholder="學生：學號／教職員：身分證號碼" autocomplete="username" required>
+          <label for="password">密碼</label>
+          <input type="password" id="password" name="password" placeholder="同資訊服務系統密碼" autocomplete="current-password" required>
+          <div id="loginError" class="login-error" style="display:none"></div>
+          <button type="submit" class="btn-search btn-login" id="loginBtn">登 入</button>
+        </form>
+        <p class="login-note">
+          忘記帳號密碼？請至
+          <a href="https://collections.dyhu.edu.tw/forgetAuths.do" target="_blank" rel="noopener">原系統重設 ↗</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- 個人資料 -->
+    <section id="personalView" style="display:none">
+      <div class="account-header">
+        <div>
+          <h1 id="welcomeTitle">個人書房</h1>
+          <p class="account-sub">資料即時擷取自 HyLib 系統</p>
+        </div>
+        <button class="btn-back" id="logoutBtn" style="margin:0">登出</button>
+      </div>
+      <div id="personalContent"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>德育護理健康學院圖書館 &copy; 2024 — 館藏資料來源：HyLib 系統</p>
+  </footer>
+
+  <script src="js/account.js"></script>
+</body>
+</html>

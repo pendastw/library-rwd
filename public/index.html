@@ -17,6 +17,12 @@
       </svg>
       圖書館館藏
     </a>
+    <a class="header-user" href="account.html" title="個人書房">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span>個人書房</span>
+    </a>
   </header>
 
   <!-- Hero / Search -->
@@ -44,12 +50,7 @@
   <!-- 跑馬燈：推薦書單 -->
   <section class="carousel-section">
     <div class="carousel-header">
-      <div class="carousel-tabs" id="carouselTabs">
-        <button class="ctab active" onclick="switchCarousel(0, this)">悅書訊</button>
-        <button class="ctab" onclick="switchCarousel(1, this)">113學年度借閱排行</button>
-        <button class="ctab" onclick="switchCarousel(2, this)">熱門電影</button>
-        <button class="ctab" onclick="switchCarousel(3, this)">專業影片、其他</button>
-      </div>
+      <div class="carousel-tabs" id="carouselTabs"></div>
       <div class="carousel-nav">
         <button class="cnav" id="prevBtn" onclick="slide(-1)">‹</button>
         <button class="cnav" id="nextBtn" onclick="slide(1)">›</button>
@@ -82,36 +83,35 @@
       window.location.href = `results.html?q=${encodeURIComponent(q)}&field=${field}`;
     }
 
-    // ── 跑馬燈 ───────────────────────────────
-    // 各分頁的資料來源設定（對應原網站四個跑馬燈分類）
-    const CAROUSEL_CONFIGS = [
-      { source: 'yueshu'  },   // 悅書訊：從原網站首頁抓取
-      { source: 'ranking' },   // 113學年度借閱排行：圖書借閱排行
-      { source: 'movie'   },   // 熱門電影：視聽資料借閱排行
-      { source: 'media2'  },   // 專業影片、其他：視聽資料第2頁
-    ];
-
+    // ── 跑馬燈（動態讀取原網站首頁 TabbedPanels3 的分類，原網站改版本站自動跟著更新）──
+    let categories = [];
     let currentCarousel = 0;
     let carouselOffset = 0;
     let carouselBooks = [];
     const CARD_WIDTH = 130; // px including gap
     let autoTimer = null;
 
-    async function loadCarousel(idx) {
+    async function initCarousel() {
       const track = document.getElementById('carouselTrack');
-      track.innerHTML = '<div class="carousel-loading"><div class="spinner"></div></div>';
-      carouselOffset = 0;
-
-      const cfg = CAROUSEL_CONFIGS[idx];
       try {
-        const res = await fetch(`/api/booklist?source=${cfg.source}`);
+        const res = await fetch('/api/booklist');
         const data = await res.json();
-        carouselBooks = (data.books || []).slice(0, 20);
-        renderCarousel();
-        startAutoSlide();
+        categories = data.categories || [];
+        if (!categories.length) {
+          track.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">暫無資料</p>';
+          return;
+        }
+        renderTabs();
+        switchCarousel(0);
       } catch (e) {
         track.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">載入失敗</p>';
       }
+    }
+
+    function renderTabs() {
+      document.getElementById('carouselTabs').innerHTML = categories.map((c, i) =>
+        `<button class="ctab${i === 0 ? ' active' : ''}" onclick="switchCarousel(${i})">${esc(c.name)}</button>`
+      ).join('');
     }
 
     function renderCarousel() {
@@ -160,12 +160,14 @@
       }, 4000);
     }
 
-    function switchCarousel(idx, btn) {
-      document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+    function switchCarousel(idx) {
       currentCarousel = idx;
+      document.querySelectorAll('.ctab').forEach((b, i) => b.classList.toggle('active', i === idx));
       clearInterval(autoTimer);
-      loadCarousel(idx);
+      carouselOffset = 0;
+      carouselBooks = (categories[idx] && categories[idx].books) || [];
+      renderCarousel();
+      startAutoSlide();
     }
 
     function esc(s) {
@@ -173,7 +175,7 @@
     }
 
     // 初始載入
-    loadCarousel(0);
+    initCarousel();
   </script>
 
 </body>

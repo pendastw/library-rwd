@@ -16,6 +16,22 @@ function fetchWithTimeout(url, options = {}) {
     .finally(() => clearTimeout(timer));
 }
 
+// ── 簡易記憶體快取：同樣的查詢在 TTL 內直接回舊結果，避免短時間重複爬取被圖書館封鎖 IP ──
+const SEARCH_CACHE_TTL = 15 * 60 * 1000; // 15 分鐘
+const SEARCH_CACHE_MAX = 300;            // 最多保留筆數，避免記憶體無限成長
+const _searchCache = new Map();          // key -> { time, data }
+
+function cacheGet(key) {
+  const hit = _searchCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.time > SEARCH_CACHE_TTL) { _searchCache.delete(key); return null; }
+  return hit.data;
+}
+function cacheSet(key, data) {
+  _searchCache.set(key, { time: Date.now(), data });
+  if (_searchCache.size > SEARCH_CACHE_MAX) _searchCache.delete(_searchCache.keys().next().value);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -32,6 +48,16 @@ module.exports = async (req, res) => {
 
   if (!q || !q.trim()) {
     return res.status(400).json({ error: '請輸入搜尋關鍵字' });
+  }
+
+  const useCache = req.query.debug !== '1';
+  const cacheKey = `s|${field}|${type}|${page}|${q.trim()}`;
+  if (useCache) {
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
   }
 
   try {
@@ -170,7 +196,9 @@ module.exports = async (req, res) => {
       });
     });
 
-    res.json({ books, total, dataTypes, page: parseInt(page), query: q, field });
+    const result = { books, total, dataTypes, page: parseInt(page), query: q, field };
+    if (useCache) cacheSet(cacheKey, result);
+    res.json(result);
   } catch (err) {
     console.error('Search proxy error:', err);
     const isTimeout = err.name === 'AbortError';

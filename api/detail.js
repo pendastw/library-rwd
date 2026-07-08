@@ -21,12 +21,38 @@ function parseMarcSubfields(str) {
   return result;
 }
 
+// ── 簡易記憶體快取：書目/館藏資料幾乎不變，快取較久，避免重複爬取被圖書館封鎖 IP ──
+const DETAIL_CACHE_TTL = 10 * 60 * 1000; // 10 分鐘（含即時館藏狀態，故不宜快取太久）
+const DETAIL_CACHE_MAX = 500;
+const _detailCache = new Map();              // key -> { time, data }
+
+function cacheGet(key) {
+  const hit = _detailCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.time > DETAIL_CACHE_TTL) { _detailCache.delete(key); return null; }
+  return hit.data;
+}
+function cacheSet(key, data) {
+  _detailCache.set(key, { time: Date.now(), data });
+  if (_detailCache.size > DETAIL_CACHE_MAX) _detailCache.delete(_detailCache.keys().next().value);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
   const { marcid } = req.query;
   if (!marcid) return res.status(400).json({ error: '缺少書籍 ID' });
+
+  const useCache = req.query.debug !== '1' && req.query.debughold !== '1';
+  const cacheKey = `d|${marcid}`;
+  if (useCache) {
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cached);
+    }
+  }
 
   try {
     // 手動跟隨 redirect 並收集所有 cookie
@@ -179,12 +205,72 @@ module.exports = async (req, res) => {
       ? `${BASE_URL}/bookDetail.do?id=${marcid}`
       : '';
 
+    // ── 即時館藏狀態：呼叫 HoldListForBookDetailAjax.do 取得每冊「目前狀態」（書在館 / 借出+到期日）──
+    // 回傳為 HTML 表格，欄位順序：序｜條碼｜館藏位置｜索書號｜資料類型｜目前狀態｜架號｜附件｜預約
+    try {
+      const holdController = new AbortController();
+      const holdTimer = setTimeout(() => holdController.abort(), TIMEOUT_MS);
+      const holdResp = await fetch(`${BASE_URL}/maintain/HoldListForBookDetailAjax.do`, {
+        method: 'POST',
+        signal: holdController.signal,
+        headers: {
+          ...HEADERS,
+          'Cookie': cookieHeader,
+          'Referer': `${BASE_URL}/bookDetail.do?id=${marcid}`,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `id=${encodeURIComponent(marcid)}`,
+      }).finally(() => clearTimeout(holdTimer));
+
+      const $h = cheerio.load(await holdResp.text());
+      const liveHoldings = [];
+      $h('table tr').each((_, tr) => {
+        const tds = $h(tr).find('td');
+        if (tds.length < 9) return;
+        const cell = (i) => $h(tds[i]).text().replace(/\s+/g, ' ').trim();
+        if (!/^\d+$/.test(cell(0))) return; // 跳過表頭列（第一欄非序號）
+
+        // 預約欄的按鈕 onclick 帶著這一冊的預約參數（Login4Reserve.do?...&hold=冊號...），
+        // 站內預約 API 需要原樣轉送這些參數
+        let reserveParams = null;
+        const onclick = $h(tds[8]).find('input[onclick], a[onclick]').attr('onclick') || '';
+        const urlMatch = onclick.match(/Login4Reserve\.do\?([^'"]+)/);
+        if (urlMatch) {
+          reserveParams = {};
+          for (const [k, v] of new URLSearchParams(urlMatch[1])) {
+            if (['id', 'site', 'hold', 'keeproom', 'collectionDef', 'purpose'].includes(k)) reserveParams[k] = v;
+          }
+        }
+
+        liveHoldings.push({
+          barcode:  cell(1),
+          location: cell(2),
+          callNo:   cell(3),
+          type:     cell(4),
+          status:   cell(5), // 書在館 / 借出（可能含到期日）
+          shelf:    cell(6),
+          reserve:  cell(8),
+          reserveParams,
+        });
+      });
+      // 有即時資料就用它取代 MARC 805 版本（含真正的借閱狀態）
+      if (liveHoldings.length) {
+        detail.holdings = liveHoldings;
+        detail.holdingsUrl = '';
+      }
+    } catch (e) {
+      // 即時館藏抓取失敗就沿用上面的 MARC 805 版本（狀態顯示「請至館內確認」）
+    }
+
     if (req.query.debughold === '1') {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.json({ internalId, marc001: marc['001'], marcid, holdingsRaw: holdings });
     }
 
-    res.json({ detail, marcid });
+    const result = { detail, marcid };
+    if (useCache) cacheSet(cacheKey, result);
+    res.json(result);
   } catch (err) {
     console.error('Detail proxy error:', err);
     const isTimeout = err.name === 'AbortError';
