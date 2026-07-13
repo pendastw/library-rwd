@@ -854,4 +854,13 @@ img { max-width: 100%; display: block; }
   .detail-cover-wrap { flex-direction: column; width: 180px; flex-shrink: 0; }
   .detail-cover { width: 180px; }
   .detail-cover-placeholder { width: 180px; }
+
+  /* 個人書房：桌面版加寬並讓資料表更緊湊，一次看完不用橫向捲動 */
+  .account-container { max-width: min(1240px, 96vw); }
+  .account-container .data-table { font-size: 0.82rem; }
+  .account-container .data-table th,
+  .account-container .data-table td { padding: 0.4rem 0.55rem; }
+  /* 資料欄（日期、數字等）不換行維持單行；題名欄可換行並保留較寬 */
+  .account-container .data-table td { white-space: nowrap; }
+  .account-container .data-table td.col-title { white-space: normal; min-width: 11rem; }
 }

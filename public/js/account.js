@@ -162,8 +162,10 @@ function renderSection() {
                   actCell = '<td data-label="操作">—</td>';
                 }
               }
-              return `<tr>${cells.map((c, i) =>
-                `<td${headers[i] ? ` data-label="${esc(headers[i])}"` : ''}>${esc(c)}</td>`).join('')}${actCell}</tr>`;
+              return `<tr>${cells.map((c, i) => {
+                const isTitle = /題名|書名/.test(headers[i] || '');
+                return `<td${headers[i] ? ` data-label="${esc(headers[i])}"` : ''}${isTitle ? ' class="col-title"' : ''}>${esc(c)}</td>`;
+              }).join('')}${actCell}</tr>`;
             }).join('')}
           </tbody>
         </table>
