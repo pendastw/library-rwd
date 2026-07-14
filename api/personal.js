@@ -13,7 +13,8 @@ const SECTIONS = [
 
 // 某些區塊固定套用的排序（HyLib 的 order 參數）。預約歷史預設「預約日期新到舊」。
 const SECTION_ORDER = {
-  reserveHistory: 'ReserveHistory.bookdate-desc',
+  reserveHistory: 'ReserveHistory.bookdate-desc', // 預約日期新到舊
+  lendHistory:    'History.lenddate-desc',        // 借書日期新到舊
 };
 
 function sectionUrl(section, page) {
