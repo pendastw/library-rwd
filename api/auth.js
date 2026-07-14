@@ -1,7 +1,10 @@
 const { createSession, destroySession, getSession, setSessionCookie, clearSessionCookie } = require('./_session');
 
 const BASE_URL = 'https://collections.dyhu.edu.tw';
-const TIMEOUT_MS = 9000;
+// 連圖書館的逾時上限。放寬到 20 秒：尖峰時 HyLib 偶爾慢個十幾秒，
+// 若上限太緊會被判逾時、害登入直接失敗。個人書房各 API（personal/reserve/myaction）
+// 都共用此處的 fetchWithTimeout，改這裡即整組一起變寬容。
+const TIMEOUT_MS = 20000;
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
