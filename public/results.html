@@ -40,6 +40,13 @@
     <div id="typeTabs" class="type-tabs"></div>
     <div class="results-header">
       <p class="results-count" id="resultsCount">搜尋中…</p>
+      <label class="sort-control">排序：
+        <select id="sortSelect" onchange="changeSort(this.value)">
+          <option value="year_desc">出版年（新→舊）</option>
+          <option value="year_asc">出版年（舊→新）</option>
+          <option value="title">題名</option>
+        </select>
+      </label>
     </div>
 
     <div id="bookGrid" class="book-grid">

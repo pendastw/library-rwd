@@ -11,9 +11,18 @@ const SECTIONS = [
   { key: 'penalty',        title: '違規紀錄',   path: '/personalization/MyPenalty.do?t=all' },
 ];
 
+// 某些區塊固定套用的排序（HyLib 的 order 參數）。預約歷史預設「預約日期新到舊」。
+const SECTION_ORDER = {
+  reserveHistory: 'ReserveHistory.bookdate-desc',
+};
+
 function sectionUrl(section, page) {
+  const parts = [];
+  if (page > 1) parts.push(`nowPage=${page}`);
+  if (SECTION_ORDER[section.key]) parts.push(`order=${encodeURIComponent(SECTION_ORDER[section.key])}`);
+  if (!parts.length) return `${BASE_URL}${section.path}`;
   const sep = section.path.includes('?') ? '&' : '?';
-  return `${BASE_URL}${section.path}${page > 1 ? `${sep}nowPage=${page}` : ''}`;
+  return `${BASE_URL}${section.path}${sep}${parts.join('&')}`;
 }
 
 // 解析清單頁：table.tablesorter + 「共 N 筆資料 / 共 N 頁」

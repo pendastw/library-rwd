@@ -356,6 +356,25 @@ img { max-width: 100%; display: block; }
 
 .results-count { font-size: 0.9rem; color: var(--text-muted); }
 
+.sort-control {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.sort-control select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
 .book-grid {
   display: grid;
   grid-template-columns: 1fr;

@@ -3,6 +3,7 @@ let currentQuery = params.get('q') || '';
 let currentField = params.get('field') || 'FullText';
 let currentPage = parseInt(params.get('page') || '1');
 let currentType = params.get('type') || 'all'; // all | book | ebook | journal | media
+let currentSort = params.get('sort') || 'year_desc'; // year_desc（預設，新到舊）| year_asc | title
 
 const gridEl = document.getElementById('bookGrid');
 const countEl = document.getElementById('resultsCount');
@@ -15,6 +16,8 @@ const typeTabsEl = document.getElementById('typeTabs');
 
 headerInput.value = currentQuery;
 headerField.value = currentField;
+const sortSelect = document.getElementById('sortSelect');
+if (sortSelect) sortSelect.value = currentSort;
 headerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') goSearch(); });
 
 function goSearch() {
@@ -31,7 +34,7 @@ async function loadResults(q, field, page) {
 
   try {
     const typeParam = currentType !== 'all' ? `&type=${currentType}` : '';
-    const url = `/api/search?q=${encodeURIComponent(q)}&field=${field}&page=${page}${typeParam}`;
+    const url = `/api/search?q=${encodeURIComponent(q)}&field=${field}&page=${page}&sort=${currentSort}${typeParam}`;
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '查詢失敗');
@@ -119,6 +122,14 @@ function switchType(type) {
   const url = new URL(location.href);
   url.searchParams.set('type', type);
   url.searchParams.set('page', '1');
+  window.location.href = url.toString();
+}
+
+function changeSort(sort) {
+  currentSort = sort;
+  const url = new URL(location.href);
+  url.searchParams.set('sort', sort);
+  url.searchParams.set('page', '1'); // 換排序回到第 1 頁
   window.location.href = url.toString();
 }
 

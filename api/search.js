@@ -46,12 +46,22 @@ module.exports = async (req, res) => {
     media:   'webpac.dataType.media',
   };
 
+  // 排序對應 HyLib 的 sortfield/sorttype（sorttype 1=降冪 0=升冪）
+  // 預設 year_desc＝出版年新到舊
+  const SORT_MAP = {
+    year_desc: { sortfield: 'YEAR', sorttype: '1' },
+    year_asc:  { sortfield: 'YEAR', sorttype: '0' },
+    title:     { sortfield: 'OTI',  sorttype: '0' },
+  };
+  const sortKey = SORT_MAP[req.query.sort] ? req.query.sort : 'year_desc';
+  const sortParams = SORT_MAP[sortKey];
+
   if (!q || !q.trim()) {
     return res.status(400).json({ error: '請輸入搜尋關鍵字' });
   }
 
   const useCache = req.query.debug !== '1';
-  const cacheKey = `s|${field}|${type}|${page}|${q.trim()}`;
+  const cacheKey = `s|${field}|${type}|${sortKey}|${page}|${q.trim()}`;
   if (useCache) {
     const cached = cacheGet(cacheKey);
     if (cached) {
@@ -70,6 +80,8 @@ module.exports = async (req, res) => {
       search_input: q,
       searchsymbol: 'hyLibCore.webpac.search.common_symbol',
       nowpage: String(page),
+      sortfield: sortParams.sortfield,
+      sorttype: sortParams.sorttype,
     };
 
     // Step 1: 先呼叫 bookSearchList.do 取得 session cookie 和 resid
